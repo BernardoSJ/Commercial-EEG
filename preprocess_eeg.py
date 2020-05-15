@@ -6,6 +6,7 @@ from pprint import pprint
 
 
 _sample_rate = 256
+_window_seconds = 30
 
 
 def extract_patient_metadata(patient: str):
@@ -25,7 +26,7 @@ def extract_patient_metadata(patient: str):
     eegs = glob.glob(f'./chb{patient}/*.edf')
 
     with open(summary_file, 'r') as f:
-    summary = f.read()
+        summary = f.read()
 
     summary_parts = summary.split('\n\n')[:-1]
     info_eegs_raw = filter(lambda part: part.startswith('File'), summary_parts)
@@ -43,7 +44,19 @@ def extract_patient_metadata(patient: str):
     return info_eegs
 
 
-def get_data(patient, channels, window_seconds=30)
+def get_data(patient, channels, window_seconds=_window_seconds):
+    ''' Gathers all EEG data of the given patient into a DataFrame
+        Selecting only the required channels of the EEG
+
+        Returns: DataFrame
+        Columns:
+        - *Channels
+        - seizure: boolean
+            1 if the corresponding frame is part of a seizure
+        - frame: index of the frame in the test
+            may repeat twice in a given test because of the overlay of windows
+        - window: index of the window in a test
+    '''
     info_eegs = extract_patient_metadata(patient)
     frames = window_seconds * _sample_rate
     overlay = int(frames/2)
@@ -60,9 +73,11 @@ def get_data(patient, channels, window_seconds=30)
         for i in range(length//overlay - 1):
             start = i * overlay
             end = start + frames
+
             data = raw_eeg[:, start:end].T
             frame = np.arange(start, end).reshape(-1, 1)
-            index = np.full((end - start, 1), i)
+            window = np.full((end - start, 1), i)
+
             columns = channels.copy()
             columns.append('frame')
             columns.append('window')
