@@ -31,7 +31,7 @@ Datos de electroencefalógrafos comerciales:
 		Sampling method: 
 			Sequential sampling, single ADC?
 		Sampling rate:
-			2048 internal downsampled to 128 SPS or 256 SPS (user configured)
+			2048 internal downsampled to 128 SPS or 256 SPS (samples per second)
 
 	4- EMOTIV INSIGHT
 		Electrodos: AF3, AF4, T7, T8 y Pz. 
@@ -46,4 +46,4 @@ Datos de electroencefalógrafos comerciales:
 			Fp1-AF7
 			Fp2-AF8
 		Sampling rate:
-			256 SPS at 24 bits
+			256 SPS (samples per second) at 24 bits
