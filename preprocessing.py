@@ -58,9 +58,12 @@ def get_data(patient, channels=None, window_seconds=_window_seconds):
             may repeat twice in a given test because of the overlay of windows
         - window: index of the window in a test
     '''
-    info_eegs = extract_patient_metadata(patient)
     frames = window_seconds * _sample_rate
     overlay = int(frames/2)
+
+    info_eegs = extract_patient_metadata(patient)
+    info_eegs_filt = filter(lambda info: int(info['Number of Seizures in File']) > 0, info_eegs)
+    info_eegs = list(info_eegs_filt)
 
     Df = pd.DataFrame()
     for test, info in enumerate(info_eegs):
@@ -96,25 +99,22 @@ def get_data(patient, channels=None, window_seconds=_window_seconds):
             dfs.append(df)
 
         df = pd.concat(dfs)
+        del dfs
 
         df['test'] = test
         df['seizure'] = 0
 
         n_seizures = int(info['Number of Seizures in File'])
 
-        if n_seizures > 0:
-            seizures_keys = filter(lambda k: k.startswith('Seizure'), info)
-            seizures = [[]*n_seizures]
-            for i, key in enumerate(seizures_keys):
-                value_seconds = int(info[key].split(' ')[0])
-                value_frames = value_seconds * _sample_rate
-                seizures[i//2].append(value_frames)
-            
-            for s_start, s_end in seizures:
-                df.loc[(df['frame'] >= s_start) & (df['frame'] <= s_end), 'seizure'] = 1
-
-        else:
-            df['seizure'] = 0
+        seizures_keys = filter(lambda k: k.startswith('Seizure'), info)
+        seizures = [[]*n_seizures]
+        for i, key in enumerate(seizures_keys):
+            value_seconds = int(info[key].split(' ')[0])
+            value_frames = value_seconds * _sample_rate
+            seizures[i//2].append(value_frames)
+        
+        for s_start, s_end in seizures:
+            df.loc[(df['frame'] >= s_start) & (df['frame'] <= s_end), 'seizure'] = 1
 
         # Optimizar uso de memoria
         columns = channels.copy() if channels else eeg_channels.copy()
@@ -127,6 +127,5 @@ def get_data(patient, channels=None, window_seconds=_window_seconds):
         df.astype(types)
 
         Df = Df.append(df)
-        print(Df.shape)
 
     return Df
