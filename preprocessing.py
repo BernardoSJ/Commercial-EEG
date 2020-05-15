@@ -1,6 +1,7 @@
 import os
 import mne
 import glob
+import numpy as np
 import pandas as pd
 from pprint import pprint
 
@@ -44,7 +45,7 @@ def extract_patient_metadata(patient: str):
     return info_eegs
 
 
-def get_data(patient, channels, window_seconds=_window_seconds):
+def get_data(patient, channels=None, window_seconds=_window_seconds):
     ''' Gathers all EEG data of the given patient into a DataFrame
         Selecting only the required channels of the EEG
 
@@ -60,12 +61,19 @@ def get_data(patient, channels, window_seconds=_window_seconds):
     info_eegs = extract_patient_metadata(patient)
     frames = window_seconds * _sample_rate
     overlay = int(frames/2)
-    for info in info_eegs:
+
+    Df = pd.DataFrame()
+    for test, info in enumerate(info_eegs):
+        print(f'Reading test {test} of {len(info_eegs)}')
         eeg_file = f"./data/chb{patient}/{info['File Name']}"
         eeg = mne.io.read_raw_edf(eeg_file)
         eeg_channels = eeg.ch_names
 
-        raw_eeg = eeg.get_data(picks=channels)
+        if channels:
+            raw_eeg = eeg.get_data(picks=channels)
+        else:
+            raw_eeg =  eeg.get_data()
+
         length = raw_eeg.shape[1]
 
         dfs = []
@@ -78,18 +86,18 @@ def get_data(patient, channels, window_seconds=_window_seconds):
             frame = np.arange(start, end).reshape(-1, 1)
             window = np.full((end - start, 1), i)
 
-            columns = channels.copy()
-            columns.append('frame')
-            columns.append('window')
+            columns = channels.copy() if channels else eeg_channels.copy()
+            columns.extend(['frame', 'window'])
 
-            df_i = pd.DataFrame(
-                data=np.hstack((data, frame, index)),
+            df = pd.DataFrame(
+                data=np.hstack((data, frame, window)),
                 columns=columns)
 
-            dfs.append(df_i)
+            dfs.append(df)
 
         df = pd.concat(dfs)
 
+        df['test'] = test
         df['seizure'] = 0
 
         n_seizures = int(info['Number of Seizures in File'])
@@ -99,7 +107,7 @@ def get_data(patient, channels, window_seconds=_window_seconds):
             seizures = [[]*n_seizures]
             for i, key in enumerate(seizures_keys):
                 value_seconds = int(info[key].split(' ')[0])
-                value_frames = value_seconds * sample_rate
+                value_frames = value_seconds * _sample_rate
                 seizures[i//2].append(value_frames)
             
             for s_start, s_end in seizures:
@@ -108,4 +116,17 @@ def get_data(patient, channels, window_seconds=_window_seconds):
         else:
             df['seizure'] = 0
 
-    return df
+        # Optimizar uso de memoria
+        columns = channels.copy() if channels else eeg_channels.copy()
+        types = dict()
+        for col in columns:
+            types[col] = 'Float16'
+
+        types.update({'seizure': bool, 'window': 'Int16', 'frame': 'Int32'})
+
+        df.astype(types)
+
+        Df = Df.append(df)
+        print(Df.shape)
+
+    return Df
