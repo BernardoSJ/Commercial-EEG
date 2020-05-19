@@ -10,8 +10,8 @@ _sample_rate = 256
 _window_seconds = 30
 
 
-def extract_patient_metadata(patient: str):
-    ''' Get metadata of `patient`'s EEG recordings
+def extract_case_metadata(case: str):
+    ''' Get metadata of `case`'s EEG recordings
 
         Returns: List with dicts with corresponding metadata
         Data:
@@ -23,8 +23,8 @@ def extract_patient_metadata(patient: str):
         - Seizure i Start Time
         - Seizure i End Time
     '''
-    summary_file = f'./data/chb{patient}/chb{patient}-summary.txt'
-    eegs = glob.glob(f'./chb{patient}/*.edf')
+    summary_file = f'./data/chb{case}/chb{case}-summary.txt'
+    eegs = glob.glob(f'./chb{case}/*.edf')
 
     with open(summary_file, 'r') as f:
         summary = f.read()
@@ -45,8 +45,8 @@ def extract_patient_metadata(patient: str):
     return info_eegs
 
 
-def get_data(patient, channels=None, window_seconds=_window_seconds):
-    ''' Gathers all EEG data of the given patient into a DataFrame
+def get_data(case, channels=None, window_seconds=_window_seconds):
+    ''' Gathers all EEG data of the given case into a DataFrame
         Selecting only the required channels of the EEG
 
         Returns: DataFrame
@@ -61,14 +61,14 @@ def get_data(patient, channels=None, window_seconds=_window_seconds):
     frames = window_seconds * _sample_rate
     overlay = int(frames/2)
 
-    info_eegs = extract_patient_metadata(patient)
+    info_eegs = extract_case_metadata(case)
     info_eegs_filt = filter(lambda info: int(info['Number of Seizures in File']) > 0, info_eegs)
     info_eegs = list(info_eegs_filt)
 
     Df = pd.DataFrame()
     for test, info in enumerate(info_eegs):
         print(f'Reading test {test} of {len(info_eegs)}')
-        eeg_file = f"./data/chb{patient}/{info['File Name']}"
+        eeg_file = f"./data/chb{case}/{info['File Name']}"
         eeg = mne.io.read_raw_edf(eeg_file)
         eeg_channels = eeg.ch_names
 
