@@ -21,3 +21,5 @@ Procesar datos
 ~~~ bash
 python preprocess_data.py
 ~~~
+
+En ambos procedimientos el progreso es guardado de forma que en caso de detener el proceso por cualquier razón este continuará en dónde se había quedado la próxima vez que sea ejecutado.
