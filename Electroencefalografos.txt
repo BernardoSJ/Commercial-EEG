@@ -13,8 +13,8 @@ Datos de electroencefalógrafos comerciales:
 	2- DSI-4
 		Electrodos: F7, F8, Fp1 y Fp2. 
 		Pares:
-			Fp1-F7
-			Fp2-F8
+			FP1-F7
+			FP2-F8
 		Sampling rate:
 			300 - 600 Hz
 
@@ -23,21 +23,19 @@ Datos de electroencefalógrafos comerciales:
 		Pares:
 			F7-T7
 			T7-P7
-			P7-T7
 			P7-O1
 			P8-O2
-			T8-P8-1
+			T8-P8
 			F8-T8
 		Sampling rate:
 			2048 internal downsampled to 128 SPS or 256 SPS (samples per second)
 		Sampling method: 
 			Sequential sampling, single ADC?
 
-
 	4- Bitbrain Air
 		Electrodos: Fp1, Fp2, AF7, AF8, PO7, PO8, O1, O2.
 		Pares:
-			Fp1-AF7
-			Fp2-AF8
+			FP1-F7
+			FP2-F8
 		Sampling rate:
 			256 SPS (samples per second) at 24 bits

@@ -39,6 +39,8 @@ def extract_case_metadata(case: str):
         for row in file_info.split('\n'):
             key, value = row.split(': ')
             value.strip()
+            while key in info_eeg:
+                key += '_'
             info_eeg[key] = value
         info_eegs.append(info_eeg)
 
@@ -73,7 +75,12 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
         eeg_channels = eeg.ch_names
 
         if channels:
-            raw_eeg = eeg.get_data(picks=channels)
+            try:
+                channels = correct_channels(channels, eeg_channels)
+                raw_eeg = eeg.get_data(picks=channels)
+            except ValueError as e:
+                print(e)
+                continue
         else:
             raw_eeg =  eeg.get_data()
 
@@ -109,7 +116,8 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
         seizures_keys = filter(lambda k: k.startswith('Seizure'), info)
         seizures = [[] for i in range(n_seizures)]
         for i, key in enumerate(seizures_keys):
-            value_seconds = int(info[key].split(' ')[0])
+            value_str = info[key].strip()
+            value_seconds = int(value_str.split(' ')[0])
             value_frames = value_seconds * _sample_rate
             seizures[i//2].append(value_frames)
         
@@ -129,3 +137,16 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
         Df = Df.append(df)
 
     return Df
+
+
+def correct_channels(channels, available_channels):
+    for i in range(len(channels)):
+        channel = channels[i]
+        if channel not in available_channels:
+            similar_channels = list(filter(lambda x: x.startswith(channel),
+                                      available_channels))
+            if len(similar_channels) == 0:
+                raise ValueError('No suitable channel to replace')
+            else:
+                channels[i] = similar_channels[0]
+    return channels
