@@ -107,7 +107,7 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
         n_seizures = int(info['Number of Seizures in File'])
 
         seizures_keys = filter(lambda k: k.startswith('Seizure'), info)
-        seizures = [[]*n_seizures]
+        seizures = [[] for i in range(n_seizures)]
         for i, key in enumerate(seizures_keys):
             value_seconds = int(info[key].split(' ')[0])
             value_frames = value_seconds * _sample_rate

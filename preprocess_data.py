@@ -61,7 +61,7 @@ def preprocess(device, channels):
         file_path = os.path.join(device_path, f'{case}.hdf')
 
         if os.path.isfile(file_path):
-            print('file')
+            print('File already exists:', file_path)
             print('Skipping case')
             continue
 
