@@ -132,7 +132,7 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
 
         types.update({'seizure': bool, 'window': 'Int16', 'frame': 'Int32'})
 
-        df.astype(types)
+        df = df.astype(types)
 
         Df = Df.append(df)
 
