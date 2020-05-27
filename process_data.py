@@ -1,6 +1,7 @@
 import os
 import gc
 import re
+import time
 import pandas as pd
 import numpy as np
 from gtda.diagrams import PersistenceEntropy
@@ -111,6 +112,7 @@ def aggregate_data(device, case, n_channels):
         df_test = df.loc[df['test'] == test]
         test_windows = int(df_test['window'].max())
         for window in range(last_window + 1, test_windows):
+            start = time.time()
             print('Processing window:', window)
             df_window = df_test.loc[df_test['window'] == window]
             seizure = is_seizure(df_window)
@@ -129,7 +131,11 @@ def aggregate_data(device, case, n_channels):
             for i in range(n_channels):
                 row.update({channels[i]: entropies[i]})
 
+            end = time.time()
+
+            row.update({'elapsed_time': end - start})
             row = pd.DataFrame(row)
+
             row.to_hdf(device_file_path, 'df', append=True)
             print(row)
         gc.collect()
