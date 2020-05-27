@@ -67,6 +67,7 @@ def preprocess(device, channels):
 
         print('Processing case:', case)
         df = preprocessing.get_data(case_num, channels=channels)
+        print('Resulting table:')
         print(df)
 
         print('Writing to disk:', case)

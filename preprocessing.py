@@ -1,3 +1,4 @@
+import gc
 import os
 import mne
 import glob
@@ -7,7 +8,7 @@ from pprint import pprint
 
 
 _sample_rate = 256
-_window_seconds = 30
+_window_seconds = 10
 
 
 def extract_case_metadata(case: str):
@@ -47,6 +48,63 @@ def extract_case_metadata(case: str):
     return info_eegs
 
 
+def get_windows(eeg, columns, frames, length, overlay):
+    ''' Partition the eeg into overlapping windows
+
+        Returns: DataFrame
+        Columns:
+        - *Channels
+        - seizure: boolean
+            1 if the corresponding frame is part of a seizure
+        - frame: index of the frame in the test
+            may repeat twice in a given test because of the overlay of windows
+        - window: index of the window in a test
+    '''
+    dfs = []
+    for i in range(length//overlay - 1):
+        start = i * overlay
+        end = start + frames
+
+        data = eeg[:, start:end].T
+        frame = np.arange(start, end).reshape(-1, 1)
+        window = np.full((end - start, 1), i)
+
+        df = pd.DataFrame(
+            data=np.hstack((data, frame, window)),
+            columns=columns)
+
+        dfs.append(df)
+
+    return dfs
+
+
+def flag_seizures(df, n_seizures, seizures_keys, info):
+    ''' Flag the frames with seizure information
+    '''
+    seizures = [[] for i in range(n_seizures)]
+    for i, key in enumerate(seizures_keys):
+        value_str = info[key].strip()
+        value_seconds = int(value_str.split(' ')[0])
+        value_frames = value_seconds * _sample_rate
+        seizures[i//2].append(value_frames)
+    
+    for s_start, s_end in seizures:
+        df.loc[(df['frame'] >= s_start) & (df['frame'] <= s_end), 'seizure'] = 1
+
+    return df
+
+
+def optimize_memory(df, columns):
+    types = dict()
+    for col in columns:
+        types[col] = 'float16'
+
+    types.update({'seizure': bool, 'window': 'int16', 'frame': 'int32'})
+
+    df = df.astype(types)
+    return df
+
+
 def get_data(case, channels=None, window_seconds=_window_seconds):
     ''' Gathers all EEG data of the given case into a DataFrame
         Selecting only the required channels of the EEG
@@ -74,6 +132,7 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
         eeg = mne.io.read_raw_edf(eeg_file)
         eeg_channels = eeg.ch_names
 
+        # Correct channels
         if channels:
             try:
                 channels = correct_channels(channels, eeg_channels)
@@ -86,27 +145,14 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
 
         length = raw_eeg.shape[1]
 
-        dfs = []
-
-        for i in range(length//overlay - 1):
-            start = i * overlay
-            end = start + frames
-
-            data = raw_eeg[:, start:end].T
-            frame = np.arange(start, end).reshape(-1, 1)
-            window = np.full((end - start, 1), i)
-
-            columns = channels.copy() if channels else eeg_channels.copy()
-            columns.extend(['frame', 'window'])
-
-            df = pd.DataFrame(
-                data=np.hstack((data, frame, window)),
-                columns=columns)
-
-            dfs.append(df)
-
+        columns = channels.copy() if channels else eeg_channels.copy()
+        columns.extend(['frame', 'window'])
+        
+        dfs = get_windows(raw_eeg, columns, frames, length, overlay)
         df = pd.concat(dfs)
+        
         del dfs
+        gc.collect()
 
         df['test'] = test
         df['seizure'] = 0
@@ -114,26 +160,11 @@ def get_data(case, channels=None, window_seconds=_window_seconds):
         n_seizures = int(info['Number of Seizures in File'])
 
         seizures_keys = filter(lambda k: k.startswith('Seizure'), info)
-        seizures = [[] for i in range(n_seizures)]
-        for i, key in enumerate(seizures_keys):
-            value_str = info[key].strip()
-            value_seconds = int(value_str.split(' ')[0])
-            value_frames = value_seconds * _sample_rate
-            seizures[i//2].append(value_frames)
+
+        df = flag_seizures(df, n_seizures, seizures_keys, info)
+
+        df = optimize_memory(df, columns)
         
-        for s_start, s_end in seizures:
-            df.loc[(df['frame'] >= s_start) & (df['frame'] <= s_end), 'seizure'] = 1
-
-        # Optimizar uso de memoria
-        columns = channels.copy() if channels else eeg_channels.copy()
-        types = dict()
-        for col in columns:
-            types[col] = 'Float16'
-
-        types.update({'seizure': bool, 'window': 'Int16', 'frame': 'Int32'})
-
-        df = df.astype(types)
-
         Df = Df.append(df)
 
     return Df
@@ -144,7 +175,7 @@ def correct_channels(channels, available_channels):
         channel = channels[i]
         if channel not in available_channels:
             similar_channels = list(filter(lambda x: x.startswith(channel),
-                                      available_channels))
+                                           available_channels))
             if len(similar_channels) == 0:
                 raise ValueError('No suitable channel to replace')
             else:
