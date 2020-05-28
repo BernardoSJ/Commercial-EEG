@@ -4,16 +4,16 @@ import re
 import time
 import pandas as pd
 import numpy as np
+import psutil
 from gtda.diagrams import PersistenceEntropy
 from gtda.homology import VietorisRipsPersistence
 from pprint import pprint
 
 
 _data_subpath = 'data/devices'
-_cwd = os.getcwd()
-_data_path = os.path.join(_cwd, _data_subpath)
+_data_path = os.path.join(os.getcwd(), _data_subpath)
 
-_seizure_ratio = 0.5
+_seizure_ratio = 0.4
 _homology_dimensions = [0]
 _max_edge_length = 0.01
 _n_jobs = 4
@@ -67,53 +67,90 @@ def is_seizure(df):
 
 
 def get_persistent_entropy(point_clouds):
+    ''' Creates Vietoris Rips Filtration and calculates Persistent Entropy
+
+        Returns
+        -------
+        List with persistent entropy of 0th homology group for each series
+    '''
     vietorisrips_tr = VietorisRipsPersistence(
         metric='manhattan',
         homology_dimensions=_homology_dimensions,
         max_edge_length=_max_edge_length,
         n_jobs=_n_jobs,
     )
-    print('Creating Vietoris Rips Complex')
     diagrams = vietorisrips_tr.fit_transform(point_clouds)
-    entropy_tr = PersistenceEntropy()
 
-    print('Calculating Persistent Entropy')
+    entropy_tr = PersistenceEntropy()
     features = entropy_tr.fit_transform(diagrams)
+
     return features
+
+
+def get_last_test(file_path, case):
+    ''' Locates the latest test processed from the given `case`
+
+        Returns
+        -------
+        Integer indicating index of last processed test
+        will return 0 if no test has been processed
+    '''
+    if os.path.isfile(file_path):
+        df = pd.read_hdf(file_path)
+        tests = df.loc[df['case'] == case, 'test']
+        test = 0 if tests.empty else tests.max()
+    else:
+        test = 0
+
+    return test
+
+
+def get_last_window(file_path, case, test):
+    ''' Locates the latest window processed from the given `case` and `test`
+
+        Returns
+        -------
+        Integer indicating index of last processsed window
+        will return -1 if no window has been processed
+    '''
+    if os.path.isfile(file_path):
+        df = pd.read_hdf(file_path)
+        windows = df.loc[(df['case'] == case) & (df['test'] == test), 'window']
+        window = -1 if windows.empty else windows.max()
+    else:
+        window = -1
+
+    return window
 
 
 def aggregate_data(device, case, n_channels):
     ''' Reduces data to a single row from each window
-        Writes to disk
+        Writes to disk each row
     '''
-    device_file_path = os.path.join(_data_path, device, f'{device}.hdf')
-
-    # Locating checkpoint
-    if os.path.isfile(device_file_path):
-        df_device = pd.read_hdf(device_file_path)
-        last_test = int(df_device['test'].max())
-        last_window = int(df_device.loc[df_device['test'] == last_test, 'window'].max())
-    else:
-        last_test = 0
-        last_window = 0
-
     print('Processing data for case:', case)
 
-    data_path = os.path.join(_data_path, device, f'{case}.hdf')
-
-    print('Reading file')
-    df = pd.read_hdf(data_path)
-    case_tests = int(df['test'].max())
+    case_data_path = os.path.join(_data_path, device, f'{case}.hdf')
+    df = pd.read_hdf(case_data_path)
+    case_tests = df['test'].max()
+    
+    device_file_path = os.path.join(_data_path, device, f'{device}.hdf')
+    last_test = get_last_test(device_file_path, case)
 
     channels = list(df)[:n_channels]
 
     for test in range(last_test, case_tests):
         print('Processing test:', test)
         df_test = df.loc[df['test'] == test]
+
+        last_window = get_last_window(device_file_path, case, test)
+        print(last_window)
         test_windows = int(df_test['window'].max())
+
         for window in range(last_window + 1, test_windows):
+            # Measure performance
+            psutil.cpu_percent()
             start = time.time()
-            print('Processing window:', window)
+
             df_window = df_test.loc[df_test['window'] == window]
             seizure = is_seizure(df_window)
 
@@ -131,13 +168,15 @@ def aggregate_data(device, case, n_channels):
             for i in range(n_channels):
                 row.update({channels[i]: entropies[i]})
 
+            # Measure performance
             end = time.time()
 
-            row.update({'elapsed_time': end - start})
+            row.update({'elapsed time': end - start})
+            row.update({'cpu usage': psutil.cpu_percent()})
+            row.update({'memory usage': psutil.virtual_memory()[3]})
             row = pd.DataFrame(row)
 
             row.to_hdf(device_file_path, 'df', append=True)
-            print(row)
         gc.collect()
 
 
