@@ -143,7 +143,6 @@ def aggregate_data(device, case, n_channels):
         df_test = df.loc[df['test'] == test]
 
         last_window = get_last_window(device_file_path, case, test)
-        print(last_window)
         test_windows = int(df_test['window'].max())
 
         for window in range(last_window + 1, test_windows):
@@ -185,16 +184,16 @@ def main():
     n_devices = len(devices)
 
     # Find checkpoint of processed devices
-    for i in reversed(range(n_devices)):
-        device, _ = devices[i]
-        device_file_path = os.path.join(_data_path, device, f'{device}.hdf')
-        if os.path.isfile(device_file_path):
-            if devices[:i]:
-                print('Skipping the following devices:')
-                print(devices[:i])
-            break
+    # for i in reversed(range(n_devices)):
+        # device, _ = devices[i]
+        # device_file_path = os.path.join(_data_path, device, f'{device}.hdf')
+        # if os.path.isfile(device_file_path):
+            # if devices[:i]:
+                # print('Skipping the following devices:')
+                # print(devices[:i])
+            # break
 
-    devices = devices[i:]
+    # devices = devices[i:]
 
     for device, n_channels in devices:
         print('Processing data for device:', device)
