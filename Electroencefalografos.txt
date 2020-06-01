@@ -1,5 +1,19 @@
 Datos de electroencefalógrafos comerciales:
 
+	3- EMOTIV EPOC+
+		Electrodos: AF3, F7, F3, FC5, T7, P7, O1, O2, P8, T8, FC6, F4, F8 y AF4
+		Pares:
+			F7-T7
+			T7-P7
+			P7-O1
+			P8-O2
+			T8-P8
+			F8-T8
+		Sampling rate:
+			2048 internal downsampled to 128 SPS or 256 SPS (samples per second)
+		Sampling method: 
+			Sequential sampling, single ADC?	
+
 	1- DSI-7
 		Electrodos: F3, F4, C3, C4, Pz, P3 y P4.
 		Pares:
@@ -17,20 +31,6 @@ Datos de electroencefalógrafos comerciales:
 			FP2-F8
 		Sampling rate:
 			300 - 600 Hz
-
-	3- EMOTIV EPOC+
-		Electrodos: AF3, F7, F3, FC5, T7, P7, O1, O2, P8, T8, FC6, F4, F8 y AF4
-		Pares:
-			F7-T7
-			T7-P7
-			P7-O1
-			P8-O2
-			T8-P8
-			F8-T8
-		Sampling rate:
-			2048 internal downsampled to 128 SPS or 256 SPS (samples per second)
-		Sampling method: 
-			Sequential sampling, single ADC?
 
 	4- Bitbrain Air
 		Electrodos: Fp1, Fp2, AF7, AF8, PO7, PO8, O1, O2.
