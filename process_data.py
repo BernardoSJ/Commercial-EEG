@@ -10,8 +10,7 @@ from gtda.homology import VietorisRipsPersistence
 from pprint import pprint
 
 
-_data_subpath = 'data/devices'
-_data_path = os.path.join(os.getcwd(), _data_subpath)
+_data_path = os.path.join('data', 'devices')
 
 _seizure_ratio = 0.4
 _homology_dimensions = [0]
